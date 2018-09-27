@@ -73,22 +73,10 @@ class UserController {
                 } else{
                     result._photo = content;
                 }
-
-                tr.dataset.user = JSON.stringify(result);
-
-                tr.innerHTML = `
-                    <td><img src="${result._photo}" alt="User Image" class="img-circle img-sm"></td>
-                    <td>${result._name}</td>
-                    <td>${result._email}</td>
-                    <td>${result._admin == true ? 'Sim' : 'Não'}</td>
-                    <td>${Utils.dateFormat(result._register)}</td>
-                    <td>
-                        <button type="button" class="btn btn-primary btn-edit btn-xs btn-flat">Editar</button>
-                        <button type="button" class="btn btn-danger btn-delete btn-xs btn-flat">Excluir</button>
-                    </td>
-                `;
-
-                this.addEventsTR(tr);
+                let user = new User();
+                user.loadFromJSON(result);
+                user.save();
+                this.getTr(user, tr);                
                 this.updatePanelNumberUsers();                
                 this.formUpdateEl.reset();
                 btn.disabled = false;
@@ -111,7 +99,8 @@ class UserController {
             if(!user) return false;
             this.getPhoto(this.formEl).then((content) =>{
                 user.photo = content;
-                this.insert(user);
+                //this.insert(user);
+                user.save();
                 this.addLine(user);
                 this.formEl.reset();
                 btnSubmit.disabled = false;
@@ -152,16 +141,8 @@ class UserController {
 
     }
 
-    getUsersStorage() {
-        let users = [];
-        if (localStorage.getItem('users')) {
-            users = JSON.parse(localStorage.getItem('users'));
-        }
-        return users;
-    }
-
     selectAll() {
-        let users = this.getUsersStorage();
+        let users = User.getUsersStorage();
 
         users.forEach(dataUser => {
             let user = new User();
@@ -170,16 +151,17 @@ class UserController {
         })
     }
 
-    insert(data) {                     
-        let users = this.getUsersStorage();
-        users.push(data);
-        localStorage.setItem('users', JSON.stringify(users));        
+    addLine(dataUser) {
+        //console.log('addLine', dataUser);                            
+        let tr = this.getTr(dataUser);
+        this.tableEl.appendChild(tr);
+        this.updatePanelNumberUsers();
     }
 
-    addLine(dataUser) {
-        //console.log('addLine', dataUser);    
-        let tr = document.createElement('tr');
-                
+    getTr(dataUser, tr = null) {
+
+        if (tr === null) tr = document.createElement('tr');
+
         tr.dataset.user = JSON.stringify(dataUser);
 
         tr.innerHTML = `               
@@ -195,16 +177,18 @@ class UserController {
         `;
 
         this.addEventsTR(tr);
-
-        this.tableEl.appendChild(tr);
-        this.updatePanelNumberUsers();
+        return tr;
     }
+    
 
     addEventsTR(tr) {
 
         tr.querySelector(".btn-delete").addEventListener("click", e => { 
 
             if(confirm("Deseja realmente excluir?")) {
+                let user = new User();
+                user.loadFromJSON(JSON.parse(tr.dataset.user));
+                user.remove();
                 tr.remove();
                 this.updatePanelNumberUsers();
             }
